@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Slow Post</title>
 <meta name="description" content="A letter that takes as long as a letter takes.">
+<meta name="robots" content="noindex, nofollow">
 <style>
   :root {
     --ink: #1B2B44;
@@ -915,7 +916,7 @@ function viewSealed(letter, link) {
     '<div class="linkbox" id="linkbox">' + esc(link) + '</div>' +
     '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px">' +
       '<button id="copy">Copy the link</button>' +
-      '<a href="https://wa.me/?text=' + encodeURIComponent(link) + '" target="_blank" rel="noopener">' +
+      '<a href="whatsapp://send?text=' + encodeURIComponent(link) + '">' +
         '<button class="ghost" type="button">Send on WhatsApp</button></a>' +
       '<button class="ghost" id="again">Write another</button>' +
     '</div>' +
