@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Slow Post</title>
+<meta name="description" content="A letter that takes as long as a letter takes.">
+<style>
+  :root {
+    --ink: #1B2B44;
+    --ink-soft: #6B7C93;
+    --paper: #EDF1F5;
+    --sheet: #FBFCFD;
+    --red: #B32A26;
+    --blue: #1F4E9C;
+    --rule: #C7D3E0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 2.1rem; line-height: 1.15; letter-spacing: -.01em; margin: 0 0 8px; font-weight: 500; }
+  .lede { color: var(--ink-soft); max-width: 62ch; margin: 0 0 34px; line-height: 1.75; }
+  .label { font-size: .78rem; color: var(--ink-soft); margin-bottom: 2px; }
+  .airmail {
+    padding: 7px;
+    background-image: repeating-linear-gradient(45deg,
+      var(--red) 0 9px, var(--sheet) 9px 18px, var(--blue) 18px 27px, var(--sheet) 27px 36px);
+  }
+  .sheet { background: var(--sheet); padding: 26px 26px 20px; }
+  .row { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 24px; }
+  .col { flex: 1 1 200px; position: relative; }
+  input, textarea {
+    width: 100%; background: transparent; border: 0; outline: none;
+    color: var(--ink); font-family: inherit; font-size: 1rem;
+    border-bottom: 1px solid var(--rule); padding: 6px 0;
+  }
+  input:focus, textarea:focus { border-bottom-color: var(--blue); }
+  ::placeholder { color: #9FB0C2; }
+  textarea {
+    border-bottom: 0; resize: none; font-size: 1.02rem; line-height: 1.9;
+    min-height: 260px; padding-top: 4px;
+    background-image: repeating-linear-gradient(var(--sheet) 0 33px, #E8EEF4 33px 34px);
+  }
+  .picked { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--rule); padding: 6px 0; }
+  .dim { color: var(--ink-soft); }
+  .small { font-size: .85rem; }
+  .opts {
+    position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin-top: 4px;
+    background: var(--sheet); border: 1px solid var(--rule);
+    box-shadow: 0 8px 24px rgba(27,43,68,.10);
+  }
+  .opt { padding: 7px 12px; cursor: pointer; }
+  .opt[aria-selected="true"] { background: #E3EAF2; }
+  button {
+    font-family: inherit; font-size: .95rem; cursor: pointer; border-radius: 2px;
+    border: 1px solid var(--ink); background: var(--ink); color: var(--sheet);
+    padding: 9px 22px;
+  }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+  button.link { background: none; border: 0; color: var(--ink-soft); padding: 0; font-size: .85rem; text-decoration: underline; }
+  .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; }
+  .divider { border: 0; border-top: 1px solid var(--rule); margin: 22px 0; }
+  .center { text-align: center; }
+  .letter { white-space: pre-wrap; line-height: 1.95; font-size: 1.03rem; }
+  .linkbox {
+    word-break: break-all; font-size: .8rem; color: var(--ink-soft);
+    background: #E7EDF3; padding: 12px 14px; max-height: 96px; overflow-y: auto;
+  }
+  .track { height: 2px; background: var(--rule); position: relative; margin: 22px 0 10px; }
+  .track > i { position: absolute; inset: 0 auto 0 0; background: var(--blue); }
+  footer { margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--ink-soft); font-size: .82rem; line-height: 1.8; }
+  a { color: var(--blue); }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  @keyframes settle { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .settle { animation: settle 420ms ease-out both; }
+  @media (prefers-reduced-motion: reduce) { .settle { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ================================================================== */
+/*  Cities: name | country code | lat | lon                            */
+/* ================================================================== */
+const RAW_CITIES = `Paris|FR|48.857|2.352
+Marseille|FR|43.296|5.370
+Lyon|FR|45.764|4.836
+Toulouse|FR|43.605|1.444
+Nice|FR|43.700|7.265
+Nantes|FR|47.218|-1.554
+Montpellier|FR|43.611|3.877
+Strasbourg|FR|48.573|7.752
+Bordeaux|FR|44.838|-0.579
+Lille|FR|50.629|3.057
+Rennes|FR|48.117|-1.677
+Reims|FR|49.258|4.032
+Le Havre|FR|49.494|0.108
+Saint-Etienne|FR|45.440|4.387
+Toulon|FR|43.125|5.930
+Grenoble|FR|45.188|5.724
+Dijon|FR|47.322|5.041
+Angers|FR|47.478|-0.563
+Nimes|FR|43.837|4.360
+Clermont-Ferrand|FR|45.777|3.087
+Le Mans|FR|48.006|0.199
+Aix-en-Provence|FR|43.529|5.447
+Brest|FR|48.390|-4.486
+Tours|FR|47.394|0.684
+Amiens|FR|49.895|2.302
+Limoges|FR|45.833|1.261
+Annecy|FR|45.899|6.129
+Perpignan|FR|42.689|2.895
+Besancon|FR|47.238|6.024
+Metz|FR|49.120|6.176
+Orleans|FR|47.902|1.909
+Rouen|FR|49.443|1.099
+Mulhouse|FR|47.750|7.340
+Caen|FR|49.183|-0.370
+Nancy|FR|48.692|6.184
+Avignon|FR|43.949|4.806
+Poitiers|FR|46.580|0.340
+La Rochelle|FR|46.160|-1.151
+Pau|FR|43.296|-0.370
+Bayonne|FR|43.493|-1.475
+Biarritz|FR|43.483|-1.559
+Chambery|FR|45.564|5.918
+Valence|FR|44.933|4.892
+Lorient|FR|47.748|-3.367
+Quimper|FR|47.996|-4.098
+Vannes|FR|47.658|-2.760
+Saint-Malo|FR|48.649|-2.026
+Cherbourg|FR|49.639|-1.616
+Calais|FR|50.951|1.858
+Dunkirk|FR|51.035|2.377
+Troyes|FR|48.297|4.074
+Chartres|FR|48.444|1.489
+Bourges|FR|47.084|2.396
+Niort|FR|46.324|-0.464
+Angouleme|FR|45.649|0.156
+Perigueux|FR|45.184|0.721
+Agen|FR|44.203|0.616
+Tarbes|FR|43.233|0.078
+Carcassonne|FR|43.213|2.351
+Beziers|FR|43.344|3.216
+Arles|FR|43.677|4.628
+Cannes|FR|43.553|7.018
+Antibes|FR|43.581|7.125
+Menton|FR|43.775|7.503
+Saint-Tropez|FR|43.268|6.640
+Ajaccio|FR|41.927|8.738
+Bastia|FR|42.701|9.450
+Corte|FR|42.307|9.150
+Porto-Vecchio|FR|41.591|9.279
+Calvi|FR|42.567|8.757
+Bonifacio|FR|41.387|9.159
+Sartene|FR|41.622|8.974
+Ile-Rousse|FR|42.634|8.937
+Propriano|FR|41.676|8.903
+Fort-de-France|MQ|14.616|-61.058
+Pointe-a-Pitre|GP|16.241|-61.533
+Cayenne|GF|4.933|-52.330
+Saint-Denis|RE|-20.882|55.450
+Mamoudzou|YT|-12.780|45.228
+Papeete|PF|-17.535|-149.570
+Noumea|NC|-22.276|166.458
+Rome|IT|41.903|12.496
+Milan|IT|45.464|9.190
+Naples|IT|40.852|14.268
+Turin|IT|45.070|7.687
+Genoa|IT|44.406|8.946
+Bologna|IT|44.494|11.343
+Florence|IT|43.770|11.256
+Venice|IT|45.440|12.316
+Palermo|IT|38.116|13.362
+Bari|IT|41.117|16.872
+Catania|IT|37.502|15.087
+Verona|IT|45.438|10.992
+Trieste|IT|45.650|13.780
+Cagliari|IT|39.224|9.122
+Sassari|IT|40.727|8.560
+Alghero|IT|40.560|8.317
+Olbia|IT|40.923|9.500
+Pisa|IT|43.716|10.397
+Perugia|IT|43.112|12.389
+Como|IT|45.808|9.085
+Rimini|IT|44.061|12.566
+Lecce|IT|40.352|18.174
+Salerno|IT|40.682|14.769
+Madrid|ES|40.417|-3.704
+Barcelona|ES|41.385|2.173
+Valencia|ES|39.470|-0.377
+Seville|ES|37.389|-5.984
+Bilbao|ES|43.263|-2.935
+Malaga|ES|36.721|-4.421
+Zaragoza|ES|41.649|-0.888
+Granada|ES|37.177|-3.598
+Palma de Mallorca|ES|39.570|2.650
+Las Palmas|ES|28.124|-15.430
+San Sebastian|ES|43.318|-1.981
+Alicante|ES|38.345|-0.481
+Cordoba|ES|37.889|-4.779
+Santiago de Compostela|ES|42.878|-8.545
+Lisbon|PT|38.722|-9.139
+Porto|PT|41.158|-8.629
+Faro|PT|37.019|-7.930
+Coimbra|PT|40.204|-8.411
+Funchal|PT|32.665|-16.925
+London|GB|51.507|-0.128
+Manchester|GB|53.481|-2.242
+Birmingham|GB|52.487|-1.890
+Edinburgh|GB|55.953|-3.188
+Glasgow|GB|55.864|-4.252
+Liverpool|GB|53.408|-2.992
+Bristol|GB|51.455|-2.588
+Oxford|GB|51.752|-1.258
+Cambridge|GB|52.205|0.122
+Cardiff|GB|51.481|-3.179
+Belfast|GB|54.597|-5.930
+Dublin|IE|53.350|-6.260
+Cork|IE|51.898|-8.475
+Galway|IE|53.271|-9.057
+Berlin|DE|52.520|13.405
+Munich|DE|48.135|11.582
+Hamburg|DE|53.551|9.994
+Cologne|DE|50.938|6.960
+Frankfurt|DE|50.110|8.682
+Stuttgart|DE|48.776|9.183
+Dusseldorf|DE|51.227|6.773
+Leipzig|DE|51.340|12.375
+Dresden|DE|51.051|13.738
+Bremen|DE|53.079|8.802
+Hanover|DE|52.376|9.732
+Nuremberg|DE|49.452|11.077
+Freiburg|DE|47.999|7.842
+Heidelberg|DE|49.399|8.673
+Brussels|BE|50.851|4.352
+Antwerp|BE|51.222|4.397
+Ghent|BE|51.055|3.717
+Liege|BE|50.633|5.567
+Bruges|BE|51.209|3.224
+Amsterdam|NL|52.370|4.895
+Rotterdam|NL|51.924|4.478
+The Hague|NL|52.078|4.288
+Utrecht|NL|52.091|5.122
+Maastricht|NL|50.851|5.691
+Luxembourg|LU|49.612|6.130
+Geneva|CH|46.204|6.143
+Zurich|CH|47.377|8.542
+Bern|CH|46.948|7.447
+Lausanne|CH|46.520|6.632
+Basel|CH|47.560|7.588
+Lugano|CH|46.005|8.951
+Vienna|AT|48.209|16.373
+Salzburg|AT|47.809|13.055
+Innsbruck|AT|47.269|11.404
+Graz|AT|47.071|15.439
+Copenhagen|DK|55.677|12.568
+Stockholm|SE|59.329|18.069
+Gothenburg|SE|57.709|11.974
+Malmo|SE|55.605|13.003
+Oslo|NO|59.914|10.752
+Bergen|NO|60.392|5.325
+Tromso|NO|69.649|18.956
+Helsinki|FI|60.170|24.938
+Reykjavik|IS|64.147|-21.942
+Prague|CZ|50.076|14.438
+Warsaw|PL|52.230|21.012
+Krakow|PL|50.065|19.945
+Budapest|HU|47.498|19.040
+Bucharest|RO|44.427|26.103
+Sofia|BG|42.698|23.322
+Belgrade|RS|44.787|20.449
+Zagreb|HR|45.815|15.982
+Ljubljana|SI|46.056|14.506
+Sarajevo|BA|43.857|18.413
+Bratislava|SK|48.146|17.107
+Vilnius|LT|54.687|25.280
+Riga|LV|56.950|24.106
+Tallinn|EE|59.437|24.754
+Kyiv|UA|50.450|30.524
+Odesa|UA|46.482|30.723
+Moscow|RU|55.756|37.617
+Saint Petersburg|RU|59.934|30.335
+Minsk|BY|53.902|27.562
+Tirana|AL|41.328|19.818
+Skopje|MK|41.998|21.426
+Athens|GR|37.984|23.728
+Thessaloniki|GR|40.640|22.944
+Heraklion|GR|35.339|25.144
+Rhodes|GR|36.434|28.218
+Istanbul|TR|41.008|28.978
+Ankara|TR|39.933|32.860
+Izmir|TR|38.424|27.143
+Antalya|TR|36.897|30.713
+Nicosia|CY|35.186|33.383
+Valletta|MT|35.899|14.514
+Casablanca|MA|33.573|-7.590
+Rabat|MA|34.021|-6.842
+Marrakesh|MA|31.630|-7.981
+Tangier|MA|35.760|-5.834
+Fez|MA|34.034|-5.000
+Algiers|DZ|36.754|3.059
+Oran|DZ|35.700|-0.634
+Constantine|DZ|36.365|6.615
+Tunis|TN|36.807|10.181
+Sfax|TN|34.740|10.760
+Cairo|EG|30.044|31.236
+Alexandria|EG|31.200|29.918
+Tripoli|LY|32.887|13.191
+Dakar|SN|14.716|-17.467
+Abidjan|CI|5.360|-4.008
+Accra|GH|5.604|-0.187
+Lagos|NG|6.524|3.379
+Bamako|ML|12.639|-8.003
+Ouagadougou|BF|12.371|-1.520
+Cotonou|BJ|6.367|2.425
+Lome|TG|6.137|1.212
+Douala|CM|4.051|9.768
+Yaounde|CM|3.848|11.502
+Libreville|GA|0.416|9.467
+Brazzaville|CG|-4.264|15.243
+Kinshasa|CD|-4.325|15.322
+Nairobi|KE|-1.286|36.817
+Addis Ababa|ET|9.032|38.747
+Kampala|UG|0.348|32.582
+Dar es Salaam|TZ|-6.792|39.208
+Kigali|RW|-1.944|30.062
+Antananarivo|MG|-18.879|47.508
+Port Louis|MU|-20.161|57.501
+Johannesburg|ZA|-26.204|28.047
+Cape Town|ZA|-33.925|18.424
+Durban|ZA|-29.859|31.021
+Windhoek|NA|-22.560|17.065
+Luanda|AO|-8.839|13.234
+Maputo|MZ|-25.966|32.567
+Khartoum|SD|15.501|32.559
+Nouakchott|MR|18.079|-15.965
+Conakry|GN|9.641|-13.578
+Niamey|NE|13.512|2.112
+N'Djamena|TD|12.135|15.055
+Beirut|LB|33.889|35.495
+Amman|JO|31.955|35.945
+Jerusalem|IL|31.769|35.214
+Tel Aviv|IL|32.085|34.781
+Tehran|IR|35.689|51.389
+Riyadh|SA|24.713|46.675
+Jeddah|SA|21.486|39.192
+Dubai|AE|25.205|55.271
+Abu Dhabi|AE|24.453|54.377
+Doha|QA|25.286|51.535
+Kuwait City|KW|29.376|47.978
+Muscat|OM|23.588|58.408
+Delhi|IN|28.614|77.209
+Mumbai|IN|19.076|72.878
+Bangalore|IN|12.972|77.595
+Kolkata|IN|22.573|88.364
+Chennai|IN|13.083|80.271
+Jaipur|IN|26.912|75.787
+Karachi|PK|24.861|67.010
+Lahore|PK|31.550|74.343
+Islamabad|PK|33.684|73.048
+Dhaka|BD|23.811|90.413
+Colombo|LK|6.927|79.861
+Kathmandu|NP|27.717|85.324
+Bangkok|TH|13.756|100.502
+Chiang Mai|TH|18.788|98.985
+Hanoi|VN|21.028|105.834
+Ho Chi Minh City|VN|10.823|106.630
+Phnom Penh|KH|11.562|104.888
+Vientiane|LA|17.975|102.633
+Yangon|MM|16.866|96.195
+Kuala Lumpur|MY|3.139|101.687
+Singapore|SG|1.352|103.820
+Jakarta|ID|-6.208|106.846
+Denpasar|ID|-8.651|115.217
+Manila|PH|14.600|120.984
+Beijing|CN|39.904|116.407
+Shanghai|CN|31.230|121.474
+Guangzhou|CN|23.129|113.264
+Shenzhen|CN|22.543|114.058
+Chengdu|CN|30.572|104.067
+Xi'an|CN|34.342|108.940
+Hong Kong|HK|22.320|114.170
+Taipei|TW|25.033|121.565
+Seoul|KR|37.567|126.978
+Busan|KR|35.180|129.076
+Tokyo|JP|35.690|139.692
+Osaka|JP|34.694|135.502
+Kyoto|JP|35.012|135.768
+Sapporo|JP|43.062|141.354
+Fukuoka|JP|33.590|130.402
+Ulaanbaatar|MN|47.887|106.906
+Tashkent|UZ|41.299|69.240
+Almaty|KZ|43.238|76.889
+Baku|AZ|40.409|49.867
+Tbilisi|GE|41.716|44.783
+Yerevan|AM|40.183|44.515
+Sydney|AU|-33.869|151.209
+Melbourne|AU|-37.814|144.963
+Brisbane|AU|-27.470|153.021
+Perth|AU|-31.953|115.857
+Adelaide|AU|-34.928|138.600
+Canberra|AU|-35.281|149.129
+Auckland|NZ|-36.849|174.763
+Wellington|NZ|-41.287|174.776
+Christchurch|NZ|-43.532|172.636
+Suva|FJ|-18.141|178.442
+New York|US|40.713|-74.006
+Los Angeles|US|34.052|-118.244
+Chicago|US|41.878|-87.630
+Houston|US|29.760|-95.370
+Miami|US|25.762|-80.192
+Boston|US|42.360|-71.059
+Washington|US|38.907|-77.037
+San Francisco|US|37.775|-122.419
+Seattle|US|47.606|-122.332
+Denver|US|39.739|-104.990
+Philadelphia|US|39.953|-75.165
+Atlanta|US|33.749|-84.388
+New Orleans|US|29.951|-90.072
+Las Vegas|US|36.170|-115.140
+Austin|US|30.267|-97.743
+Honolulu|US|21.307|-157.858
+Anchorage|US|61.218|-149.900
+Montreal|CA|45.502|-73.567
+Quebec City|CA|46.814|-71.208
+Toronto|CA|43.653|-79.383
+Vancouver|CA|49.283|-123.121
+Ottawa|CA|45.421|-75.697
+Calgary|CA|51.045|-114.058
+Halifax|CA|44.649|-63.576
+Mexico City|MX|19.433|-99.133
+Guadalajara|MX|20.677|-103.347
+Cancun|MX|21.161|-86.851
+Monterrey|MX|25.687|-100.316
+Havana|CU|23.114|-82.366
+Santo Domingo|DO|18.486|-69.931
+Port-au-Prince|HT|18.594|-72.307
+Kingston|JM|17.971|-76.793
+San Juan|PR|18.466|-66.106
+Panama City|PA|8.983|-79.517
+San Jose|CR|9.928|-84.091
+Guatemala City|GT|14.634|-90.507
+Managua|NI|12.115|-86.236
+San Salvador|SV|13.692|-89.218
+Bogota|CO|4.711|-74.072
+Medellin|CO|6.244|-75.581
+Caracas|VE|10.481|-66.904
+Quito|EC|-0.181|-78.468
+Lima|PE|-12.046|-77.043
+La Paz|BO|-16.500|-68.150
+Santiago|CL|-33.449|-70.669
+Buenos Aires|AR|-34.604|-58.382
+Montevideo|UY|-34.902|-56.164
+Asuncion|PY|-25.264|-57.576
+Brasilia|BR|-15.794|-47.883
+Sao Paulo|BR|-23.551|-46.633
+Rio de Janeiro|BR|-22.907|-43.173
+Salvador|BR|-12.977|-38.501
+Recife|BR|-8.048|-34.877
+Manaus|BR|-3.119|-60.022
+Porto Alegre|BR|-30.035|-51.218
+Ushuaia|AR|-54.802|-68.303
+Georgetown|GY|6.802|-58.155
+Paramaribo|SR|5.852|-55.204`;
+
+const COUNTRY = {
+  FR:["France","EU",1], MQ:["Martinique","AM",1], GP:["Guadeloupe","AM",1],
+  GF:["French Guiana","AM",1], RE:["Réunion","AF",1], YT:["Mayotte","AF",1],
+  PF:["French Polynesia","OC",0], NC:["New Caledonia","OC",0],
+  IT:["Italy","EU",1], ES:["Spain","EU",1], PT:["Portugal","EU",1],
+  GB:["United Kingdom","EU",0], IE:["Ireland","EU",1], DE:["Germany","EU",1],
+  BE:["Belgium","EU",1], NL:["Netherlands","EU",1], LU:["Luxembourg","EU",1],
+  CH:["Switzerland","EU",0], AT:["Austria","EU",1], DK:["Denmark","EU",1],
+  SE:["Sweden","EU",1], NO:["Norway","EU",0], FI:["Finland","EU",1],
+  IS:["Iceland","EU",0], CZ:["Czechia","EU",1], PL:["Poland","EU",1],
+  HU:["Hungary","EU",1], RO:["Romania","EU",1], BG:["Bulgaria","EU",1],
+  RS:["Serbia","EU",0], HR:["Croatia","EU",1], SI:["Slovenia","EU",1],
+  BA:["Bosnia and Herzegovina","EU",0], SK:["Slovakia","EU",1], LT:["Lithuania","EU",1],
+  LV:["Latvia","EU",1], EE:["Estonia","EU",1], UA:["Ukraine","EU",0],
+  RU:["Russia","EU",0], BY:["Belarus","EU",0], AL:["Albania","EU",0],
+  MK:["North Macedonia","EU",0], GR:["Greece","EU",1], TR:["Turkey","EU",0],
+  CY:["Cyprus","EU",1], MT:["Malta","EU",1],
+  MA:["Morocco","AF",0], DZ:["Algeria","AF",0], TN:["Tunisia","AF",0],
+  EG:["Egypt","AF",0], LY:["Libya","AF",0], SN:["Senegal","AF",0],
+  CI:["Ivory Coast","AF",0], GH:["Ghana","AF",0], NG:["Nigeria","AF",0],
+  ML:["Mali","AF",0], BF:["Burkina Faso","AF",0], BJ:["Benin","AF",0],
+  TG:["Togo","AF",0], CM:["Cameroon","AF",0], GA:["Gabon","AF",0],
+  CG:["Congo","AF",0], CD:["DR Congo","AF",0], KE:["Kenya","AF",0],
+  ET:["Ethiopia","AF",0], UG:["Uganda","AF",0], TZ:["Tanzania","AF",0],
+  RW:["Rwanda","AF",0], MG:["Madagascar","AF",0], MU:["Mauritius","AF",0],
+  ZA:["South Africa","AF",0], NA:["Namibia","AF",0], AO:["Angola","AF",0],
+  MZ:["Mozambique","AF",0], SD:["Sudan","AF",0], MR:["Mauritania","AF",0],
+  GN:["Guinea","AF",0], NE:["Niger","AF",0], TD:["Chad","AF",0],
+  LB:["Lebanon","AS",0], JO:["Jordan","AS",0], IL:["Israel","AS",0],
+  IR:["Iran","AS",0], SA:["Saudi Arabia","AS",0], AE:["United Arab Emirates","AS",0],
+  QA:["Qatar","AS",0], KW:["Kuwait","AS",0], OM:["Oman","AS",0],
+  IN:["India","AS",0], PK:["Pakistan","AS",0], BD:["Bangladesh","AS",0],
+  LK:["Sri Lanka","AS",0], NP:["Nepal","AS",0], TH:["Thailand","AS",0],
+  VN:["Vietnam","AS",0], KH:["Cambodia","AS",0], LA:["Laos","AS",0],
+  MM:["Myanmar","AS",0], MY:["Malaysia","AS",0], SG:["Singapore","AS",0],
+  ID:["Indonesia","AS",0], PH:["Philippines","AS",0], CN:["China","AS",0],
+  HK:["Hong Kong","AS",0], TW:["Taiwan","AS",0], KR:["South Korea","AS",0],
+  JP:["Japan","AS",0], MN:["Mongolia","AS",0], UZ:["Uzbekistan","AS",0],
+  KZ:["Kazakhstan","AS",0], AZ:["Azerbaijan","AS",0], GE:["Georgia","AS",0],
+  AM:["Armenia","AS",0],
+  AU:["Australia","OC",0], NZ:["New Zealand","OC",0], FJ:["Fiji","OC",0],
+  US:["United States","AM",0], CA:["Canada","AM",0], MX:["Mexico","AM",0],
+  CU:["Cuba","AM",0], DO:["Dominican Republic","AM",0], HT:["Haiti","AM",0],
+  JM:["Jamaica","AM",0], PR:["Puerto Rico","AM",0], PA:["Panama","AM",0],
+  CR:["Costa Rica","AM",0], GT:["Guatemala","AM",0], NI:["Nicaragua","AM",0],
+  SV:["El Salvador","AM",0], CO:["Colombia","AM",0], VE:["Venezuela","AM",0],
+  EC:["Ecuador","AM",0], PE:["Peru","AM",0], BO:["Bolivia","AM",0],
+  CL:["Chile","AM",0], AR:["Argentina","AM",0], UY:["Uruguay","AM",0],
+  PY:["Paraguay","AM",0], BR:["Brazil","AM",0], GY:["Guyana","AM",0],
+  SR:["Suriname","AM",0]
+};
+
+const CITIES = RAW_CITIES.split("\n").map(function (line, i) {
+  const p = line.split("|");
+  const meta = COUNTRY[p[1]] || [p[1], "EU", 0];
+  return { id: i, name: p[0], cc: p[1], lat: +p[2], lon: +p[3],
+           country: meta[0], cont: meta[1], eu: !!meta[2] };
+});
+
+/* ================================================================== */
+/*  Transit model                                                      */
+/* ================================================================== */
+const H = 3600000;
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONTHS = ["January","February","March","April","May","June","July",
+                "August","September","October","November","December"];
+
+function haversine(a, b) {
+  const R = 6371, r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const x = Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+const tzShift = (c) => Math.round(c.lon / 15) * H;
+
+function closed(ms) {
+  const d = new Date(ms);
+  if (d.getUTCDay() === 0) return true;
+  const k = (d.getUTCMonth() + 1) + "-" + d.getUTCDate();
+  return k === "1-1" || k === "5-1" || k === "12-25";
+}
+const startOfDay = (ms) => { const d = new Date(ms); d.setUTCHours(0,0,0,0); return d.getTime(); };
+const atHour = (ms, h, m) => { const d = new Date(ms); d.setUTCHours(h, m || 0, 0, 0); return d.getTime(); };
+
+// Collection: Monday to Saturday, 4 pm.
+function nextCollection(ms) {
+  let t = ms;
+  for (let i = 0; i < 20; i++) {
+    if (!closed(t)) { const cut = atHour(t, 16); if (t <= cut) return cut; }
+    t = startOfDay(t) + 24 * H;
+  }
+  return t;
+}
+// Delivery round: Monday to Saturday, 8:30 am to 1 pm.
+function nextDelivery(ms, rnd) {
+  let t = ms;
+  for (let i = 0; i < 25; i++) {
+    if (!closed(t)) {
+      const end = atHour(t, 13);
+      if (t <= end) {
+        const base = Math.max(t, atHour(t, 8, 30));
+        return base + rnd() * (end - base);
+      }
+    }
+    t = startOfDay(t) + 24 * H;
+  }
+  return t;
+}
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Computed once when the letter is sealed, then carried in the link.
+function route(from, to, sentAt, seed) {
+  const rnd = mulberry32(seed);
+  const d = haversine(from, to);
+  const domestic = from.cc === to.cc;
+  const sameCont = from.cont === to.cont;
+
+  let h;
+  if (domestic) h = Math.min(14 + d / 55, 48 + d / 150);
+  else if (sameCont) h = 30 + d / 45;
+  else h = 54 + d / 220;
+
+  if (!domestic && !(from.eu && to.eu)) h += sameCont ? 20 : 34;
+  h += 12;
+  h *= 0.85 + rnd() * 0.45;
+
+  let incident = null;
+  const dice = rnd();
+  if (dice < 0.05) {
+    h += 36 + rnd() * 72;
+    incident = domestic ? "Held up at the sorting centre" : "Held in customs";
+  } else if (dice < 0.09) {
+    h += 18 + rnd() * 24;
+    incident = "Missorted along the way";
+  }
+
+  let t = sentAt + tzShift(from);
+  const collectedLocal = nextCollection(t);
+  t = collectedLocal + h * H;
+  t = t - tzShift(from) + tzShift(to);
+  const deliveredLocal = nextDelivery(t, rnd);
+
+  return {
+    arrivesAt: Math.round(deliveredLocal - tzShift(to)),
+    collectedAt: Math.round(collectedLocal - tzShift(from)),
+    distance: Math.round(d),
+    incident: incident
+  };
+}
+
+/* -------------------- dates --------------------------------------- */
+function fmt(ms, city, withTime) {
+  const d = new Date(ms + tzShift(city));
+  let s = DAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+  if (withTime === false) return s;
+  return s + ", " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0");
+}
+function fmtShort(ms, city) {
+  const d = new Date(ms + tzShift(city));
+  return String(d.getUTCDate()).padStart(2, "0") + "." +
+         String(d.getUTCMonth() + 1).padStart(2, "0") + "." +
+         String(d.getUTCFullYear()).slice(2);
+}
+// "Come back tomorrow", and its neighbours.
+function waitPhrase(arrivesAt, city) {
+  const now = Date.now();
+  if (now >= arrivesAt) return "It is here.";
+  const nowLocal = startOfDay(now + tzShift(city));
+  const arrLocal = new Date(arrivesAt + tzShift(city));
+  const dayGap = Math.round((startOfDay(arrLocal.getTime()) - nowLocal) / 86400000);
+  if (dayGap <= 0) return "Arriving later this morning.";
+  if (dayGap === 1) return "Come back tomorrow morning.";
+  if (dayGap <= 6) return "Come back on " + DAYS[arrLocal.getUTCDay()] + " morning.";
+  return "Due on " + fmt(arrivesAt, city, false) + ".";
+}
+function countdown(arrivesAt) {
+  const left = arrivesAt - Date.now();
+  if (left <= 0) return "";
+  const days = Math.floor(left / 86400000);
+  const hours = Math.floor((left % 86400000) / H);
+  const mins = Math.floor((left % H) / 60000);
+  if (days >= 1) return days + "d " + hours + "h remaining";
+  if (hours >= 1) return hours + "h " + String(mins).padStart(2, "0") + "m remaining";
+  return mins + " minutes remaining";
+}
+
+/* -------------------- payload in the URL -------------------------- */
+function b64url(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 8192) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+  }
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function unb64url(str) {
+  const s = atob(str.replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
+}
+async function pack(obj) {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  if (typeof CompressionStream === "function") {
+    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+    const zipped = new Uint8Array(await new Response(stream).arrayBuffer());
+    return "g" + b64url(zipped);
+  }
+  return "p" + b64url(bytes);
+}
+async function unpack(str) {
+  const mode = str[0], body = unb64url(str.slice(1));
+  if (mode === "g") {
+    const stream = new Blob([body]).stream().pipeThrough(new DecompressionStream("gzip"));
+    const raw = new Uint8Array(await new Response(stream).arrayBuffer());
+    return JSON.parse(new TextDecoder().decode(raw));
+  }
+  return JSON.parse(new TextDecoder().decode(body));
+}
+
+/* -------------------- small helpers ------------------------------- */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const norm = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const km = (n) => n.toLocaleString("en-GB");
+
+// Rebuilds a full city object from what the link carries.
+function cityFrom(o) {
+  const meta = COUNTRY[o.c] || [o.c, "EU", 0];
+  return { name: o.n, cc: o.c, lat: o.la, lon: o.lo,
+           country: meta[0], cont: meta[1], eu: !!meta[2] };
+}
+
+/* -------------------- optional lock ------------------------------- */
+async function deriveKey(pass, salt) {
+  const base = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: salt, iterations: 150000, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function lockText(text, pass) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pass, salt);
+  const ct = new Uint8Array(await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(text)));
+  return { s: b64url(salt), i: b64url(iv), c: b64url(ct) };
+}
+async function unlockText(box, pass) {
+  const key = await deriveKey(pass, unb64url(box.s));
+  const raw = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: unb64url(box.i) }, key, unb64url(box.c));
+  return new TextDecoder().decode(raw);
+}
+
+function postmarkSVG(city, date, size) {
+  const s = size || 96, r = s / 2 - 3, c = s / 2;
+  let lines = "";
+  for (let i = 0; i < 3; i++) {
+    lines += '<line x1="' + (c - 22) + '" x2="' + (c + 22) + '" y1="' + (c - 6 + i * 6) +
+             '" y2="' + (c - 6 + i * 6) + '" stroke="var(--red)" stroke-width=".8"/>';
+  }
+  return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 ' + s + ' ' + s +
+    '" aria-hidden="true" style="opacity:.62;transform:rotate(-8deg)">' +
+    '<circle cx="' + c + '" cy="' + c + '" r="' + r + '" fill="none" stroke="var(--red)" stroke-width="1.6"/>' +
+    '<circle cx="' + c + '" cy="' + c + '" r="' + (r - 5) + '" fill="none" stroke="var(--red)" stroke-width=".7"/>' +
+    lines +
+    '<text x="' + c + '" y="' + (c - 12) + '" text-anchor="middle" fill="var(--red)" style="font:600 ' +
+      (s * 0.1) + 'px Palatino,Georgia,serif;letter-spacing:.08em">' + esc(city.slice(0, 14).toUpperCase()) + '</text>' +
+    '<text x="' + c + '" y="' + (c + 24) + '" text-anchor="middle" fill="var(--red)" style="font:' +
+      (s * 0.1) + 'px Palatino,Georgia,serif;letter-spacing:.06em">' + esc(date) + '</text></svg>';
+}
+
+/* ================================================================== */
+/*  City picker                                                        */
+/* ================================================================== */
+function cityPicker(root, label, placeholder, onPick, initial) {
+  let chosen = initial || null, cursor = 0, matches = [];
+
+  function render() {
+    if (chosen) {
+      root.innerHTML = '<div class="label">' + label + '</div>' +
+        '<div class="picked"><span>' + esc(chosen.name) +
+        '<span class="dim small"> · ' + esc(chosen.country) + '</span></span>' +
+        '<button class="link" type="button" data-clear>change</button></div>';
+      $("[data-clear]", root).onclick = function () { chosen = null; onPick(null); render(); };
+      return;
+    }
+    root.innerHTML = '<div class="label">' + label + '</div>' +
+      '<input type="text" autocomplete="off" placeholder="' + esc(placeholder) + '">' +
+      '<div class="opts" hidden></div>';
+    const input = $("input", root), list = $(".opts", root);
+
+    function search(q) {
+      const n = norm(q.trim());
+      if (!n) return [];
+      const starts = [], has = [];
+      for (const c of CITIES) {
+        const cn = norm(c.name);
+        if (cn.indexOf(n) === 0) starts.push(c);
+        else if (cn.indexOf(n) > -1 || norm(c.country).indexOf(n) === 0) has.push(c);
+        if (starts.length > 7) break;
+      }
+      return starts.concat(has).slice(0, 7);
+    }
+    function paint() {
+      if (!matches.length) { list.hidden = true; return; }
+      list.hidden = false;
+      list.innerHTML = matches.map(function (c, i) {
+        return '<div class="opt" role="option" aria-selected="' + (i === cursor) + '" data-i="' + i + '">' +
+          esc(c.name) + '<span class="dim small"> · ' + esc(c.country) + '</span></div>';
+      }).join("");
+      Array.prototype.forEach.call(list.children, function (el) {
+        el.onmousedown = function () { pick(matches[+el.dataset.i]); };
+      });
+    }
+    function pick(c) { chosen = c; onPick(c); render(); }
+
+    input.oninput = function () { matches = search(input.value); cursor = 0; paint(); };
+    input.onblur = function () { setTimeout(function () { list.hidden = true; }, 120); };
+    input.onfocus = function () { if (matches.length) list.hidden = false; };
+    input.onkeydown = function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); cursor = Math.min(cursor + 1, matches.length - 1); paint(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); cursor = Math.max(cursor - 1, 0); paint(); }
+      else if (e.key === "Enter" && matches[cursor]) { e.preventDefault(); pick(matches[cursor]); }
+      else if (e.key === "Escape") list.hidden = true;
+    };
+  }
+  render();
+}
+
+/* ================================================================== */
+/*  Writing view                                                       */
+/* ================================================================== */
+function viewCompose(pre) {
+  pre = pre || {};
+  const app = $("#app");
+  app.innerHTML =
+    '<h1>The Slow Post</h1>' +
+    '<p class="lede">Write a letter, and it travels the way letters travel. ' +
+    'You get a link to send. It opens on nothing but a sealed envelope until the morning it arrives.</p>' +
+    '<div class="airmail"><div class="sheet">' +
+      '<div class="row"><div class="col" id="from"></div><div class="col" id="to"></div></div>' +
+      '<div class="row">' +
+        '<div class="col"><div class="label">From</div><input id="sender" placeholder="your name"></div>' +
+        '<div class="col"><div class="label">To</div><input id="recipient" placeholder="their name"></div>' +
+      '</div>' +
+      '<div class="row"><div class="col">' +
+        '<div class="label">Lock with a word — optional</div>' +
+        '<input id="lock" placeholder="a word you both know">' +
+      '</div><div class="col"></div></div>' +
+      '<hr class="divider">' +
+      '<textarea id="body" placeholder="Pick the city you are writing from first."></textarea>' +
+      '<div class="foot">' +
+        '<div class="dim small" id="estimate" style="line-height:1.6">Travel time depends on distance, working days and luck.</div>' +
+        '<button id="seal" disabled>Seal the letter</button>' +
+      '</div>' +
+    '</div></div>' +
+    '<footer>Everything stays in this page. The letter is carried inside the link you send, ' +
+    'so nothing is stored anywhere and nobody but the two of you ever holds it.</footer>';
+
+  const state = { from: pre.from || null, to: pre.to || null };
+
+  function refresh() {
+    const body = $("#body").value.trim();
+    const ok = state.from && state.to && $("#sender").value.trim() && $("#recipient").value.trim() && body;
+    $("#seal").disabled = !ok;
+    if (state.from) {
+      $("#body").placeholder = state.from.name + ", " + fmt(Date.now(), state.from, false) + "\n\nDear…";
+    }
+    if (state.from && state.to) {
+      const p = route(state.from, state.to, Date.now(), 1);
+      $("#estimate").innerHTML = esc(state.from.name) + " &rarr; " + esc(state.to.name) +
+        " · " + km(p.distance) + " km<br>should arrive around " + esc(fmt(p.arrivesAt, state.to, false));
+    }
+  }
+
+  cityPicker($("#from"), "Posting from", "Ajaccio, Geneva, Tokyo…",
+    function (c) { state.from = c; refresh(); }, state.from);
+  cityPicker($("#to"), "Going to", "Where should it land?",
+    function (c) { state.to = c; refresh(); }, state.to);
+  if (pre.sender) $("#sender").value = pre.sender;
+  if (pre.recipient) $("#recipient").value = pre.recipient;
+  $("#sender").oninput = refresh;
+  $("#recipient").oninput = refresh;
+  $("#body").oninput = refresh;
+  refresh();
+  if (pre.from) $("#body").focus();
+
+  $("#seal").onclick = async function () {
+    const now = Date.now();
+    const id = now.toString(36) + Math.random().toString(36).slice(2, 8);
+    let seed = 7;
+    for (const ch of id) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+    const r = route(state.from, state.to, now, seed);
+    const letter = {
+      v: 1,
+      a: { n: state.from.name, c: state.from.cc, la: state.from.lat, lo: state.from.lon },
+      b: { n: state.to.name, c: state.to.cc, la: state.to.lat, lo: state.to.lon },
+      s: $("#sender").value.trim(),
+      r: $("#recipient").value.trim(),
+      k: r.collectedAt,
+      x: r.arrivesAt,
+      d: r.distance,
+      i: r.incident
+    };
+    const word = $("#lock").value.trim();
+    if (word) letter.e = await lockText($("#body").value, word);
+    else letter.m = $("#body").value;
+    const link = location.origin + location.pathname + "#" + (await pack(letter));
+    viewSealed(letter, link);
+  };
+}
+
+/* ================================================================== */
+/*  After sealing: the link to send                                    */
+/* ================================================================== */
+function viewSealed(letter, link) {
+  const to = { name: letter.b.n, cc: letter.b.c, lat: letter.b.la, lon: letter.b.lo };
+  const from = { name: letter.a.n, cc: letter.a.c, lat: letter.a.la, lon: letter.a.lo };
+  const app = $("#app");
+  const long = link.length > 7000;
+
+  app.innerHTML = '<div class="settle center">' +
+    '<div style="display:flex;justify-content:center;margin-bottom:20px">' +
+      postmarkSVG(from.name, fmtShort(letter.k, from)) + '</div>' +
+    '<p style="font-size:1.3rem;margin:0 0 6px">Sealed for ' + esc(letter.r) + ', in ' + esc(to.name) + '.</p>' +
+    '<p class="dim" style="line-height:1.8;margin:0">Collected ' + esc(fmt(letter.k, from)) + '.<br>' +
+      'Due for delivery ' + esc(fmt(letter.x, to)) + ', ' + esc(to.name) + ' time.<br>' +
+      km(letter.d) + ' km to cover.</p>' +
+    '<p class="dim small" style="margin:22px 0 8px">Send this link. It will not open before the morning it arrives.' +
+      (letter.e ? '<br>It also needs the word you chose — tell ' + esc(letter.r) + ' separately.' : '') + '</p>' +
+    '<div class="linkbox" id="linkbox">' + esc(link) + '</div>' +
+    '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px">' +
+      '<button id="copy">Copy the link</button>' +
+      '<a href="https://wa.me/?text=' + encodeURIComponent(link) + '" target="_blank" rel="noopener">' +
+        '<button class="ghost" type="button">Send on WhatsApp</button></a>' +
+      '<button class="ghost" id="again">Write another</button>' +
+    '</div>' +
+    (long ? '<p class="dim small" style="margin-top:18px">This letter is long, so the link is too. ' +
+      'Some apps cut very long links — check it opens before you rely on it.</p>' : '') +
+    '</div>';
+
+  $("#copy").onclick = async function () {
+    try { await navigator.clipboard.writeText(link); $("#copy").textContent = "Copied"; }
+    catch (e) {
+      const sel = window.getSelection(), range = document.createRange();
+      range.selectNodeContents($("#linkbox")); sel.removeAllRanges(); sel.addRange(range);
+      $("#copy").textContent = "Select and copy";
+    }
+  };
+  $("#again").onclick = function () { viewCompose(); };
+}
+
+/* ================================================================== */
+/*  Reading view: the letterbox                                        */
+/* ================================================================== */
+function icsHref(letter, to) {
+  const d = new Date(letter.x);
+  const stamp = (t) => t.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const body = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//The Slow Post//EN", "BEGIN:VEVENT",
+    "UID:" + letter.x + "@slowpost",
+    "DTSTAMP:" + stamp(new Date()),
+    "DTSTART:" + stamp(d),
+    "DTEND:" + stamp(new Date(letter.x + 30 * 60000)),
+    "SUMMARY:A letter arrives from " + letter.s,
+    "DESCRIPTION:Posted in " + letter.a.n + ". Open the link you were sent.",
+    "END:VEVENT", "END:VCALENDAR"
+  ].join("\r\n");
+  return "data:text/calendar;charset=utf-8," + encodeURIComponent(body);
+}
+
+function viewLetter(letter) {
+  const from = cityFrom(letter.a);
+  const to = cityFrom(letter.b);
+  const app = $("#app");
+  let text = letter.e ? null : letter.m;
+  let wrong = false;
+
+  function paint() {
+    const arrived = Date.now() >= letter.x;
+    const span = letter.x - letter.k;
+    const done = Math.max(2, Math.min(100, 100 * (Date.now() - letter.k) / span));
+
+    app.innerHTML = '<div class="settle">' +
+      '<div class="airmail"><div class="sheet">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">' +
+          '<div style="line-height:1.7">' +
+            '<div style="font-size:1.05rem">' + (arrived ? "From " + esc(letter.s) + ", in " + esc(from.name)
+                                                         : "A letter for " + esc(letter.r)) + '</div>' +
+            '<div class="dim small">' + esc(from.name) + ' &rarr; ' + esc(to.name) + ' · ' + km(letter.d) + ' km' +
+              ' · posted ' + esc(fmt(letter.k, from, false)) + '</div>' +
+          '</div>' +
+          postmarkSVG(from.name, fmtShort(letter.k, from), 78) +
+        '</div>' +
+        (arrived && text !== null
+          ? '<hr class="divider"><div class="letter">' + esc(text) + '</div>'
+          : arrived
+          ? '<hr class="divider">' +
+            '<p style="margin:0 0 8px">This one is locked. Type the word ' + esc(letter.s) + ' chose.</p>' +
+            '<div class="foot" style="margin-top:8px">' +
+              '<input id="word" type="password" placeholder="the word" style="flex:1 1 200px">' +
+              '<button id="open">Open it</button></div>' +
+            (wrong ? '<p class="small" style="margin:14px 0 0;color:var(--red)">' +
+              'That word does not open it. Try again, or ask ' + esc(letter.s) + '.</p>' : '')
+          : '<div class="track"><i style="width:' + done + '%"></i></div>' +
+            '<p style="font-size:1.15rem;margin:14px 0 4px">' + esc(waitPhrase(letter.x, to)) + '</p>' +
+            '<p class="dim small" style="margin:0">' + esc(countdown(letter.x)) +
+              (letter.i ? ' · ' + esc(letter.i) : '') + '</p>' +
+            '<p class="dim small" style="margin:20px 0 0">Due ' + esc(fmt(letter.x, to)) + ', ' +
+              esc(to.name) + ' time. <a href="' + icsHref(letter, to) +
+              '" download="letter.ics">Add a reminder</a></p>') +
+      '</div></div>' +
+      (arrived && text !== null
+        ? '<div style="margin-top:22px"><button class="ghost" id="reply">Write back to ' +
+          esc(letter.s) + '</button></div>'
+        : '') +
+      '<footer>Letters are not delivered on Sundays. Keep this link — it is the only copy.</footer>' +
+      '</div>';
+
+    if ($("#open")) {
+      const attempt = async function () {
+        const word = $("#word").value.trim();
+        if (!word) return;
+        try { text = await unlockText(letter.e, word); wrong = false; }
+        catch (err) { wrong = true; }
+        paint();
+      };
+      $("#open").onclick = attempt;
+      $("#word").onkeydown = function (e) { if (e.key === "Enter") attempt(); };
+      $("#word").focus();
+    }
+    if ($("#reply")) {
+      $("#reply").onclick = function () {
+        history.replaceState(null, "", location.pathname);
+        viewCompose({ from: to, to: from, sender: letter.r, recipient: letter.s });
+      };
+    }
+  }
+
+  paint();
+  if (Date.now() < letter.x) {
+    const timer = setInterval(function () {
+      paint();
+      if (Date.now() >= letter.x) clearInterval(timer);
+    }, 30000);
+  }
+}
+
+function viewBroken() {
+  $("#app").innerHTML = '<h1>The Slow Post</h1>' +
+    '<p class="lede">This link is damaged — most likely it was cut short somewhere along the way. ' +
+    'Ask whoever sent it to send the whole thing again.</p>' +
+    '<button class="ghost" onclick="location.hash=\'\';location.reload()">Write a letter instead</button>';
+}
+
+/* ================================================================== */
+(async function start() {
+  const hash = location.hash.slice(1);
+  if (!hash) { viewCompose(); return; }
+  try { viewLetter(await unpack(hash)); }
+  catch (e) { viewBroken(); }
+})();
+</script>
+</body>
+</html>
