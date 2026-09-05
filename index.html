@@ -704,33 +704,54 @@ const $ = (sel, root) => (root || document).querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const km = (n) => n.toLocaleString("en-GB");
+const km = (n) => Number(n).toLocaleString("en-GB");
+
+// Refuses anything decoded from the link that is not exactly the shape we wrote.
+// Every field that reaches the DOM or the crypto must be of the expected type.
+function check(L) {
+  const num = (v) => typeof v === "number" && Number.isFinite(v);
+  const str = (v) => typeof v === "string";
+  const obj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+  const city = (o) => obj(o) && str(o.n) && str(o.c) && num(o.la) && num(o.lo);
+  if (!obj(L) || !city(L.a) || !city(L.b) || !str(L.s) || !str(L.r) ||
+      !num(L.k) || !num(L.x) || !num(L.d) || (L.i != null && !str(L.i))) {
+    throw new Error("bad letter");
+  }
+  if (L.e != null) {
+    if (!obj(L.e) || !str(L.e.s) || !str(L.e.i) || !str(L.e.c) ||
+        (L.e.t != null && !num(L.e.t))) throw new Error("bad lock");
+  } else if (!str(L.m)) {
+    throw new Error("bad body");
+  }
+  return L;
+}
 
 // Rebuilds a full city object from what the link carries.
 function cityFrom(o) {
-  const meta = COUNTRY[o.c] || [o.c, "EU", 0];
+  const meta = Object.prototype.hasOwnProperty.call(COUNTRY, o.c) ? COUNTRY[o.c] : [o.c, "EU", 0];
   return { name: o.n, cc: o.c, lat: o.la, lon: o.lo,
            country: meta[0], cont: meta[1], eu: !!meta[2] };
 }
 
 /* -------------------- optional lock ------------------------------- */
-async function deriveKey(pass, salt) {
+const PBKDF2_ITERATIONS = 600000;       // links sealed before this change carry no "t" and used 150000
+async function deriveKey(pass, salt, iterations) {
   const base = await crypto.subtle.importKey(
     "raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt, iterations: 150000, hash: "SHA-256" },
+    { name: "PBKDF2", salt: salt, iterations: iterations, hash: "SHA-256" },
     base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 async function lockText(text, pass) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(pass, salt);
+  const key = await deriveKey(pass, salt, PBKDF2_ITERATIONS);
   const ct = new Uint8Array(await crypto.subtle.encrypt(
     { name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(text)));
-  return { s: b64url(salt), i: b64url(iv), c: b64url(ct) };
+  return { s: b64url(salt), i: b64url(iv), c: b64url(ct), t: PBKDF2_ITERATIONS };
 }
 async function unlockText(box, pass) {
-  const key = await deriveKey(pass, unb64url(box.s));
+  const key = await deriveKey(pass, unb64url(box.s), box.t || 150000);
   const raw = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: unb64url(box.i) }, key, unb64url(box.c));
   return new TextDecoder().decode(raw);
@@ -829,8 +850,8 @@ function viewCompose(pre) {
         '<div class="col"><div class="label">To</div><input id="recipient" placeholder="their name"></div>' +
       '</div>' +
       '<div class="row"><div class="col">' +
-        '<div class="label">Lock with a word — optional</div>' +
-        '<input id="lock" placeholder="a word you both know">' +
+        '<div class="label">Lock with a phrase — optional</div>' +
+        '<input id="lock" placeholder="a few words only the two of you know">' +
       '</div><div class="col"></div></div>' +
       '<hr class="divider">' +
       '<textarea id="body" placeholder="Pick the city you are writing from first."></textarea>' +
@@ -890,7 +911,7 @@ function viewCompose(pre) {
     const word = $("#lock").value.trim();
     if (word) letter.e = await lockText($("#body").value, word);
     else letter.m = $("#body").value;
-    const link = location.origin + location.pathname + "#" + (await pack(letter));
+    const link = location.href.split("#")[0] + "#" + (await pack(letter));
     viewSealed(letter, link);
   };
 }
@@ -1042,7 +1063,7 @@ function viewBroken() {
 (async function start() {
   const hash = location.hash.slice(1);
   if (!hash) { viewCompose(); return; }
-  try { viewLetter(await unpack(hash)); }
+  try { viewLetter(check(await unpack(hash))); }
   catch (e) { viewBroken(); }
 })();
 </script>
